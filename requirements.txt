@@ -1,0 +1,6 @@
+keras
+numpy
+python3-opencv
+opencv-python
+scipy
+tensorflow-cpu
