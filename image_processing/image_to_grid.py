@@ -20,22 +20,21 @@ def init_sheet():
     return grid
 
 
-def image_to_grid(warpped_image):
+def image_to_grid(warp):
     height = warp.shape[0] // 9
     width = warp.shape[1] // 9
 
     offset_width = math.floor(width / 10)    # Offset is used to get rid of the boundaries
     offset_height = math.floor(height / 10)
-    
-    grid = init_sheet()
+
+    grid = init_sheet
     model = load_model()
     # Divide the Sudoku board into 9x9 square:
     for i in range(9):
         for j in range(9):
 
             # Crop with offset (We don't want to include the boundaries)
-            crop_image = warp[(height * i + offset_height):(height * (i + 1) - offset_height), 
-                              (width * j + offset_width):(width * (j + 1) - offset_width)]        
+            crop_image = warp[height*i+offset_height:height*(i+1)-offset_height, width*j+offset_width:width*(j+1)-offset_width]        
             
             # There are still some boundary lines left though
             # => Remove all black lines near the edges
@@ -43,13 +42,13 @@ def image_to_grid(warpped_image):
             # Notice as soon as we reach a line which is not a black line, the while loop stops
             ratio = 0.6        
             # Top
-            while np.sum(crop_image[0]) <= (1 - ratio) * crop_image.shape[1] * 255:
+            while np.sum(crop_image[0]) <= (1-ratio) * crop_image.shape[1] * 255:
                 crop_image = crop_image[1:]
             # Bottom
-            while np.sum(crop_image[:, -1]) <= (1 - ratio) * crop_image.shape[1] * 255:
+            while np.sum(crop_image[:,-1]) <= (1-ratio) * crop_image.shape[1] * 255:
                 crop_image = np.delete(crop_image, -1, 1)
             # Left
-            while np.sum(crop_image[:, 0]) <= (1-ratio) * crop_image.shape[0] * 255:
+            while np.sum(crop_image[:,0]) <= (1-ratio) * crop_image.shape[0] * 255:
                 crop_image = np.delete(crop_image, 0, 1)
             # Right
             while np.sum(crop_image[-1]) <= (1-ratio) * crop_image.shape[0] * 255:
@@ -58,17 +57,16 @@ def image_to_grid(warpped_image):
             # Take the largestConnectedComponent (The digit), and remove all noises
             crop_image = cv2.bitwise_not(crop_image)
             crop_image = largest_connected_component(crop_image)
-        
+           
             # Resize
-            crop_image = cv2.resize(crop_image, (28, 28))
-
+            digit_pic_size = 28
+            crop_image = cv2.resize(crop_image, (digit_pic_size,digit_pic_size))
 
             # If this is a white cell, set grid[i][j] to 0 and continue on the next image:
 
             # Criteria 1 for detecting white cell:
             # Has too little black pixels
-            digit_pic_size = 28
-            if crop_image.sum() >= digit_pic_size**2 * 255 - digit_pic_size * 1 * 255:
+            if crop_image.sum() >= digit_pic_size**2*255 - digit_pic_size * 1 * 255:
                 grid[i][j] == 0
                 continue    # Move on if we have a white cell
 
@@ -88,9 +86,7 @@ def image_to_grid(warpped_image):
             
             # Now we are quite certain that this crop_image contains a number
 
-            # Store the number of rows and cols
-            rows, cols = crop_image.shape
-
+            
             # Apply Binary Threshold to make digits more clear
             _, crop_image = cv2.threshold(crop_image, 200, 255, cv2.THRESH_BINARY) 
             crop_image = crop_image.astype(np.uint8)
@@ -98,7 +94,7 @@ def image_to_grid(warpped_image):
             # Centralize the image according to center of mass
             crop_image = cv2.bitwise_not(crop_image)
             shift_x, shift_y = get_best_shift(crop_image)
-            shifted = shift(crop_image, shift_x, shift_y)
+            shifted = shift(crop_image,shift_x,shift_y)
             crop_image = shifted
 
             crop_image = cv2.bitwise_not(crop_image)
@@ -163,9 +159,10 @@ def load_model():
 # This function is used for seperating the digit from noise in "crop_image"
 # The Sudoku board will be chopped into 9x9 small square image,
 # each of those image is a "crop_image"
-def largest_connected_component(image):
+def largest_connected_component(crop_image):
 
-    image = image.astype('uint8')
+    image = crop_image.astype('uint8')
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(image, connectivity=8)
     sizes = stats[:, -1]
 

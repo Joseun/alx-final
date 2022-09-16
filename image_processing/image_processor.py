@@ -15,13 +15,13 @@ def convert_image(image):
     Return: adjusted image
     """
     # Convert image to a grayscale,
-    gray_image = cv2.cvtColor(image_copy, cv2.COLOR_BGR2GRAY)
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # blur that gray image for easier detection
     blur_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
 
     # apply adaptiveThreshold
-    adapted_image = cv2.adaptiveThreshold(blur, 255, 1, 1, 11, 2)
+    adapted_image = cv2.adaptiveThreshold(blur_image, 255, 1, 1, 11, 2)
 
     final_image = find_contours(adapted_image, image)
 
@@ -39,7 +39,7 @@ def find_contours(adapted_image, image):
     Return: corners or image if failed
     """
     # Find all contours
-    contours, _ = cv2.findContours(thresh, cv2.RETR_TREE,
+    contours, _ = cv2.findContours(adapted_image, cv2.RETR_TREE,
                                    cv2.CHAIN_APPROX_SIMPLE)
 
     # Assuming the puzzle image has the biggest contour,
@@ -78,17 +78,17 @@ def corners_from_contours(contours, image):
         poly_approx = cv2.approxPolyDP(contours, epsilon, True)
         corners = cv2.convexHull(poly_approx)
         if len(corners) == 4:
-            image_with_4edges = orient_corners(corners)
+            image_with_4edges = orient_corners(corners, image)
             return image_with_4edges
         else:
-            if len(corners) > corner_amount:
+            if len(corners) > 4:
                 coefficient += .01
             else:
                 coefficient -= .01
     return image
 
 
-def orient_corners(corners):
+def orient_corners(corners, image):
     """
     Function to locate the top left, top right, bottom left
     and bottom right corners
@@ -130,24 +130,5 @@ def orient_corners(corners):
         location[3] = corners[0]
 
     location = location.reshape(4, 2)
-    grid_perimeter = square_check.square_check(location, image)
-    processed_image = perpective_grab(image, location, grid_perimeter)
-    return processed_image
-
-
-def perpective_grab(image, location, dist):
-    # calculate the perspective transform matrix and warp
-    # the perspective to grab the screen
-    perspective_transformed_matrix = cv2.getPerspectiveTransform(rect, dst)
-    warp = cv2.warpPerspective(image, perspective_transformed_matrix,
-                               (max_width, max_height))
-    warp_copy = np.copy(warp)
-
-    # At this point, warp contains ONLY the chopped Sudoku board
-    # Do some image processing to get ready for recognizing digits
-    warp_copy = cv2.cvtColor(warp_copy, cv2.COLOR_BGR2GRAY)
-    warp_copy = cv2.GaussianBlur(warp_copy, (5, 5), 0)
-    warp_copy = cv2.adaptiveThreshold(warp_copy, 255, 1, 1, 11, 2)
-    warp_copy = cv2.bitwise_not(warp_copy)
-    _, warp_image = cv2.threshold(warp_copy, 150, 255, cv2.THRESH_BINARY)
-    return warp_image
+    warp_image_matrix = square_check.square_check(location, image)
+    return warp_image_matrix

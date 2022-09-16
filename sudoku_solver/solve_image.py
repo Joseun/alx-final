@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import cv2
 import numpy as np
-import sudoku_solver
+import math
+from . import sudoku_solver
 import copy
 
 
-def solve_image(frame, old_sudoku, grid, processed_image):
+def solve_image(frame, old_sudoku, grid, processed_image, transformed_matrix):
     user_grid = copy.deepcopy(grid)
     image = copy.deepcopy(frame)
     # Solve sudoku after we have recognizing each digits of the Sudoku board:
@@ -17,13 +18,13 @@ def solve_image(frame, old_sudoku, grid, processed_image):
             solved_image = write_solution_on_image(processed_image, old_sudoku, user_grid)
     # If this is a different board
     else:
-        sudokuSolver.solve_sudoku(grid) # Solve it
+        sudoku_solver.solve_sudoku(grid) # Solve it
         if(all_board_non_zero(grid)): # If we got a solution
             solved_image = write_solution_on_image(processed_image, grid, user_grid)
             old_sudoku = copy.deepcopy(grid)      # Keep the old solution
 
     # Apply inverse perspective transform and paste the solutions on top of the orginal image
-    result_sudoku = cv2.warpPerspective(solved_image, perspective_transformed_matrix, (image.shape[1], image.shape[0])
+    result_sudoku = cv2.warpPerspective(solved_image, transformed_matrix, (image.shape[1], image.shape[0])
                                         , flags=cv2.WARP_INVERSE_MAP)
     result = np.where(result_sudoku.sum(axis=-1,keepdims=True)!=0, result_sudoku, image)
 

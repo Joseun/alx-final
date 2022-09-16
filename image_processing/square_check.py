@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
+import cv2
 import numpy as np
 import math
-
 
 
 # Return the angle between 2 vectors in degrees
@@ -41,10 +41,10 @@ def square_check(location, image):
 
     Return: tuple of positions
     """
-    A = rect[0]
-    B = rect[1]
-    C = rect[2]
-    D = rect[3]
+    A = location[0]
+    B = location[1]
+    C = location[2]
+    D = location[3]
     
     # 1st condition: If all 4 angles are not approximately 90 degrees (with tolerance = epsAngle), stop
     AB = B - A      # 4 vectors AB AD BC DC
@@ -62,15 +62,15 @@ def square_check(location, image):
     if (side_lengths_are_too_different(A, B, C, D, eps_scale)):
         return image
 
-    perimeter = dimensions(location)
+    perimeter = dimensions(location, image)
     return perimeter
 
 
-def dimensions(location):
+def dimensions(location, image):
     # Now we are sure ABCD correspond to 4 corners of a Sudoku board
 
     # the width of our Sudoku board
-    (tl, tr, br, bl) = rect
+    (tl, tr, br, bl) = location
     width_A = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
     width_B = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
 
@@ -90,4 +90,17 @@ def dimensions(location):
         [max_width - 1, 0],
         [max_width - 1, max_height - 1],
         [0, max_height - 1]], dtype = "float32")
-    return dst
+    perspective_transformed_matrix = cv2.getPerspectiveTransform(location, dst)
+    warp = cv2.warpPerspective(image, perspective_transformed_matrix, (max_width, max_height))
+    
+    # calculate the perspective transform matrix and warp
+    # the perspective to grab the screen
+
+    # At this point, warp contains ONLY the chopped Sudoku board
+    # Do some image processing to get ready for recognizing digits
+    warp = cv2.cvtColor(warp, cv2.COLOR_BGR2GRAY)
+    warp = cv2.GaussianBlur(warp, (5, 5), 0)
+    warp = cv2.adaptiveThreshold(warp, 255, 1, 1, 11, 2)
+    warp = cv2.bitwise_not(warp)
+    _, warp_image = cv2.threshold(warp, 150, 255, cv2.THRESH_BINARY)
+    return [warp_image, perspective_transformed_matrix]
